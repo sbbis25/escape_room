@@ -506,6 +506,8 @@ export default function App() {
     letterSpacing: '0.05em',
   }
 
+  const dividerProgress = DIVIDER.length === 0 ? 0 : divider.typed.length / DIVIDER.length
+
   const keypadDigits = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0']
   const secretConfetti = Array.from({ length: 30 }, (_, idx) => ({
     id: idx,
@@ -867,10 +869,12 @@ export default function App() {
             </h1>
 
             {title.done && (
-              <p style={{ color: termDim, margin: '3rem 0 3rem', letterSpacing: '0.05em' }}>
-                {divider.typed}
-                {!divider.done && <span className="cursor-blink">█</span>}
-              </p>
+              <div className="splash-divider" style={{ color: termDim }}>
+                <span
+                  className="splash-divider-line"
+                  style={{ transform: `scaleX(${dividerProgress})` }}
+                />
+              </div>
             )}
 
             {stage === 'splash' && divider.done && (
