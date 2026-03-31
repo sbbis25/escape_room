@@ -56,7 +56,7 @@ const BACKGROUND_BRIEFING = [
   'It has been 30 years since its abandonment after her tragic, yet mysterious death.',
   'Her pioneering research involved the creation of SeqFind, a genomic exploration software.',
   "As a forensic investigator, you've been granted limited access, to begin your investigation into her death but in order to work you'll need the correct credentials to access her notes.",
-  'The username is recorded in the lab registry (and entered for you), and the password can be uncovered by examining the puzzles you ahve completed.',
+  'The username is recorded in the lab registry (and entered for you), and the password can be uncovered by examining the puzzles you have completed.',
   'Only with both will you be able to explore the secrets waiting within the lab.',
 ]
 const PRIMARY_CLUE_LINES = [
@@ -217,6 +217,12 @@ export default function App() {
   const title = useTypewriter(TITLE, 100, true)
   const divider = useTypewriter(DIVIDER, 40, title.done)
   const enter = useTypewriter(ENTER_LABEL, 60, divider.done)
+  const bgTitle = useTypewriter('Background', 45, stage === 'background')
+  const bgBody = useTypewriter(
+    [...BACKGROUND_BRIEFING, '', 'Best of Luck,', 'Rithik Sogal'].join('\n'),
+    18,
+    bgTitle.done
+  )
   const userLbl = useTypewriter(USER_LABEL, 55, stage === 'login')
   const usernameTyped = useTypewriter(AUTH_USERNAME, 55, userLbl.done)
   const passLbl = useTypewriter(PASS_LABEL, 55, usernameTyped.done)
@@ -1019,18 +1025,28 @@ export default function App() {
                 }}
               >
                 <section className="workspace-pane clue-page-pane background-briefing-pane">
-                  <div className="workspace-pane-title">Background</div>
+                  <div className="workspace-pane-title">
+                    {bgTitle.typed}
+                    {!bgTitle.done && <span className="cursor-blink">█</span>}
+                  </div>
                   <div className="clue-page-copy background-briefing-copy">
-                    {BACKGROUND_BRIEFING.map((line) => (
-                      <div key={line} className="clue-page-line background-briefing-line">
-                        {line}
-                      </div>
-                    ))}
-                    <div className="clue-page-signoff background-briefing-signoff">
-                      <div>Best of Luck,</div>
-                      <div>Rithik Sogal</div>
-                    </div>
-                    <div className="clue-page-hint">click anywhere to continue to login</div>
+                    {bgTitle.done && bgBody.typed.split('\n').map((line, idx, arr) => {
+                      const isLast = idx === arr.length - 1
+                      return (
+                        <div
+                          key={idx}
+                          className="clue-page-line background-briefing-line"
+                        >
+                          {line}
+                          {isLast && !bgBody.done && (
+                            <span className="cursor-blink">█</span>
+                          )}
+                        </div>
+                      )
+                    })}
+                    {bgBody.done && (
+                      <div className="clue-page-hint">click anywhere to continue to login</div>
+                    )}
                   </div>
                 </section>
               </section>
