@@ -370,25 +370,6 @@ export default function App() {
     return terminalEntryIdRef.current
   }
 
-  function returnToHome() {
-    setAccessLine('')
-    setWorkspaceInput('')
-    setTerminalEntries([])
-    setDnaFrame(0)
-    setDnaMinutes(0)
-    setSequencePipelineStep(0)
-    setUsername(AUTH_USERNAME)
-    setPassword('')
-    setAuthError('')
-    setShutdownSeconds(30)
-    setCodeInput('')
-    setTriesLeft(3)
-    setLockoutSeconds(0)
-    setKeypadMessage('')
-    setCluePagePhase('closed')
-    setStage('splash')
-  }
-
   function toggleCluePage() {
     setCluePagePhase((current) => {
       if (current === 'closed' || current === 'closing') return 'opening'
