@@ -39,6 +39,7 @@ type TerminalEntry =
 type CluePagePhase = 'closed' | 'opening' | 'open' | 'closing'
 
 const FUNCTION_ENTRIES = [
+  'clear()',
   'codon_counts()',
   'get_seq()',
   'gc_ratio()',
@@ -55,7 +56,7 @@ const BACKGROUND_BRIEFING = [
   'It has been 30 years since its abandonment after her tragic, yet mysterious death.',
   'Her pioneering research involved the creation of SeqFind, a genomic exploration software.',
   "As a forensic investigator, you've been granted limited access, to begin your investigation into her death but in order to work you'll need the correct credentials to access her notes.",
-  'The username is recorded in the lab registry (and entered for you), and the password can be uncovered by examining the crossword on the wall, pay special attention to the bolded answer.',
+  'The username is recorded in the lab registry (and entered for you), and the password can be uncovered by examining the puzzles you ahve completed.',
   'Only with both will you be able to explore the secrets waiting within the lab.',
 ]
 const PRIMARY_CLUE_LINES = [
@@ -67,7 +68,7 @@ const PRIMARY_CLUE_LINES = [
 ]
 const SECONDARY_CLUE_LINES = [
   'hfdilahfdfbnkld/fnkdfldsfk;dn',
-  'Timeless Cells Timeless, Glow Cells Timeless, Always Timeless Glow, Glow Always Always',
+  'Timeless Cells Timeless Glow Cells Timeless Always Timeless Glow Glow Always Always',
 ]
 const SECONDARY_CLUE_SIGNOFF = ['Best,', 'Dr. friedslalafa']
 
@@ -129,25 +130,6 @@ function buildDnaParticles(points: HelixPoint[]) {
         opacity: 0.2 + point.rightFront * 0.48,
       },
     ]
-  })
-}
-
-function renderClueText(text: string) {
-  return text.split(/(\s+)/).map((segment, idx) => {
-    if (!segment || /^\s+$/.test(segment)) return segment
-
-    const match = segment.match(/^([^A-Za-z0-9]*)([A-Za-z0-9])?(.*)$/)
-    if (!match || !match[2]) return <span key={`${segment}-${idx}`}>{segment}</span>
-
-    const [, prefix, first, rest] = match
-
-    return (
-      <span key={`${segment}-${idx}`} className="clue-page-word">
-        {prefix}
-        <span className="clue-page-word-initial">{first}</span>
-        {rest}
-      </span>
-    )
   })
 }
 
@@ -229,6 +211,7 @@ export default function App() {
 
   const passwordRef = useRef<HTMLInputElement>(null)
   const workspaceInputRef = useRef<HTMLInputElement>(null)
+  const workspaceLogRef = useRef<HTMLDivElement>(null)
   const keypadInputRef = useRef<HTMLInputElement>(null)
   const terminalEntryIdRef = useRef(0)
   const title = useTypewriter(TITLE, 100, true)
@@ -299,6 +282,13 @@ export default function App() {
     if (stage !== 'workspace' || cluePagePhase !== 'closed') return
     workspaceInputRef.current?.focus()
   }, [cluePagePhase, stage, terminalEntries])
+
+  useEffect(() => {
+    if (stage !== 'workspace' && stage !== 'countdown') return
+    const log = workspaceLogRef.current
+    if (!log) return
+    log.scrollTop = log.scrollHeight
+  }, [stage, terminalEntries, workspaceInput])
 
   useEffect(() => {
     if (stage !== 'countdown') return
@@ -451,6 +441,11 @@ export default function App() {
     }
 
     setWorkspaceInput('')
+
+    if (command === 'clear()') {
+      setTerminalEntries([])
+      return
+    }
 
     const processedOutputs: Record<string, string> = {
       'get_seq()': GET_SEQ_OUTPUT,
@@ -620,7 +615,7 @@ export default function App() {
           <div className="workspace-screen">
             <section className="workspace-pane workspace-prompt-pane">
               <div className="workspace-pane-title">Command Prompt</div>
-              <div className="workspace-prompt-log">
+              <div ref={workspaceLogRef} className="workspace-prompt-log">
                 <div className="prompt-line">
                   <span style={{ color: termGreen }}>{`> ${username}-seq_files %`}</span>
                 </div>
@@ -827,13 +822,11 @@ export default function App() {
                     <div className="clue-page-stamp">03/27/2089</div>
                     <div className="clue-page-time">6:00 AM</div>
                     {SECONDARY_CLUE_LINES.map((line) => (
-                      <div key={line} className="clue-page-line clue-page-line-accented">
-                        {renderClueText(line)}
-                      </div>
+                      <div key={line} className="clue-page-line">{line}</div>
                     ))}
-                    <div className="clue-page-signoff clue-page-signoff-accented">
+                    <div className="clue-page-signoff">
                       {SECONDARY_CLUE_SIGNOFF.map((line) => (
-                        <div key={line}>{renderClueText(line)}</div>
+                        <div key={line}>{line}</div>
                       ))}
                     </div>
 

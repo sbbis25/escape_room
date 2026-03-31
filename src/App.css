@@ -118,6 +118,7 @@
   inset: 0;
   background: #000;
   display: flex;
+  overflow: hidden;
   z-index: 1;
 }
 
@@ -214,6 +215,7 @@
 .terminal-body {
   position: relative;
   flex: 1;
+  min-height: 0;
   overflow: hidden;
   background:
     radial-gradient(circle at 50% 16%, rgba(163, 230, 53, 0.06), transparent 34%),
@@ -539,10 +541,12 @@
 
 .workspace-screen {
   height: 100%;
+  min-height: 0;
   display: grid;
   grid-template-columns: minmax(0, 1.45fr) minmax(300px, 0.95fr);
   gap: 1rem;
   padding: 1rem;
+  overflow: hidden;
 }
 
 .clue-page-overlay {
@@ -634,25 +638,6 @@
   border-top: 1px solid rgba(163, 230, 53, 0.18);
 }
 
-.clue-page-word {
-  display: inline;
-}
-
-.clue-page-word-initial {
-  font-size: 1.5em;
-  font-weight: 700;
-  color: #f4ffe5;
-  text-shadow: 0 0 10px rgba(223, 255, 173, 0.24);
-}
-
-.clue-page-line-accented {
-  font-size: 2.55rem;
-}
-
-.clue-page-signoff-accented {
-  font-size: 2.45rem;
-}
-
 .clue-page-hint {
   margin-top: auto;
   color: rgba(213, 255, 133, 0.58);
@@ -661,9 +646,11 @@
 }
 
 .workspace-side {
+  min-height: 0;
   display: grid;
   grid-template-rows: minmax(130px, 0.68fr) minmax(290px, 1.32fr);
   gap: 1rem;
+  overflow: hidden;
 }
 
 .workspace-pane {
@@ -695,15 +682,24 @@
 }
 
 .workspace-prompt-pane {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   padding-bottom: 0.4rem;
+  overflow: hidden;
 }
 
 .workspace-prompt-log {
   flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 0.8rem;
   padding: 1rem 1.2rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
   font-family: 'VT323', monospace;
   font-size: 1.65rem;
   letter-spacing: 0.05em;
