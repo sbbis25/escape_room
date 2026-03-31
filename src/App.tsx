@@ -11,7 +11,7 @@ const PASS_LABEL = '> PASSWORD:'
 const VALIDATE_LABEL = '[ VALIDATE ]'
 const CHROME_TITLE = 'team@seqfind: -'
 const AUTH_USERNAME = 'friedman_g'
-const AUTH_PASSWORD = 'bioinformatics_rocks'
+const AUTH_PASSWORD = 'sequence'
 const GET_SEQ_OUTPUT = 'TCTATGTCTGAATCTGCTTCTATGTCTATGTCTTCTGCTATGTCTGAATCTGCT'
 const CODON_SCAN_OUTPUT = "['TCT', 'ATG', 'TCT', 'GAA', 'TCT', 'GCT', 'TCT', 'ATG', 'TCT', 'ATG', 'TCT', 'TCT', 'GCT', 'ATG', 'TCT', 'GAA', 'TCT', 'GCT']"
 const CODON_COUNTS_OUTPUT = 'GAA: 2\nATG: 4\nGCT: 3\nTCT: 9'
@@ -23,6 +23,7 @@ const termBgBlack = '#000000'
 type Stage =
   | 'typing'
   | 'splash'
+  | 'background'
   | 'login'
   | 'granted'
   | 'workspace'
@@ -35,6 +36,8 @@ type TerminalEntry =
   | { id: number; kind: 'processing'; label: string; progress: number }
   | { id: number; kind: 'output'; text: string }
 
+type CluePagePhase = 'closed' | 'opening' | 'open' | 'closing'
+
 const FUNCTION_ENTRIES = [
   'codon_counts()',
   'get_seq()',
@@ -45,6 +48,28 @@ const FUNCTION_ENTRIES = [
   'mutateView()',
   'translateSeq()',
 ]
+
+const CLUE_PAGE_ANIMATION_MS = 360
+const BACKGROUND_BRIEFING = [
+  "Hidden deep within the research facility, Dr. Friedman's lab hums in the quiet.",
+  'It has been 30 years since its abandonment after her tragic, yet mysterious death.',
+  'Her pioneering research involved the creation of SeqFind, a genomic exploration software.',
+  "As a forensic investigator, you've been granted limited access, to begin your investigation into her death but in order to work you'll need the correct credentials to access her notes.",
+  'The username is recorded in the lab registry (and entered for you), and the password can be uncovered by examining the crossword on the wall, pay special attention to the bolded answer.',
+  'Only with both will you be able to explore the secrets waiting within the lab.',
+]
+const PRIMARY_CLUE_LINES = [
+  'Hidden within this sequenced strand, a quiet voice speaks in threes.',
+  "Break it apart, and you'll hear them clearly.",
+  'Those that speak most often hold the key.',
+  'Count them, then order them wisely,',
+  "only then will the numbers and code to life's secrets be revealed.",
+]
+const SECONDARY_CLUE_LINES = [
+  'hfdilahfdfbnkld/fnkdfldsfk;dn',
+  'Timeless Cells Timeless, Glow Cells Timeless, Always Timeless Glow, Glow Always Always',
+]
+const SECONDARY_CLUE_SIGNOFF = ['Best,', 'Dr. friedslalafa']
 
 type HelixPoint = {
   id: number
@@ -107,6 +132,25 @@ function buildDnaParticles(points: HelixPoint[]) {
   })
 }
 
+function renderClueText(text: string) {
+  return text.split(/(\s+)/).map((segment, idx) => {
+    if (!segment || /^\s+$/.test(segment)) return segment
+
+    const match = segment.match(/^([^A-Za-z0-9]*)([A-Za-z0-9])?(.*)$/)
+    if (!match || !match[2]) return <span key={`${segment}-${idx}`}>{segment}</span>
+
+    const [, prefix, first, rest] = match
+
+    return (
+      <span key={`${segment}-${idx}`} className="clue-page-word">
+        {prefix}
+        <span className="clue-page-word-initial">{first}</span>
+        {rest}
+      </span>
+    )
+  })
+}
+
 // ── Typewriter hook ───────────────────────────────────────────────────────
 function useTypewriter(text: string, speed: number, active: boolean) {
   const [typed, setTyped] = useState('')
@@ -156,14 +200,7 @@ function TerminalFrame({
         <header className="terminal-bar">
           <div className="terminal-bar-meta">{headerText}</div>
           <div className="terminal-bar-title">{CHROME_TITLE}</div>
-          <div className="terminal-actions">
-            {action}
-            <div className="terminal-controls" aria-hidden="true">
-              <span />
-              <span />
-              <span />
-            </div>
-          </div>
+          <div className="terminal-actions">{action}</div>
         </header>
         <div className="terminal-body">{children}</div>
       </section>
@@ -174,7 +211,7 @@ function TerminalFrame({
 // ── App ───────────────────────────────────────────────────────────────────
 export default function App() {
   const [stage, setStage] = useState<Stage>('typing')
-  const [username, setUsername] = useState('')
+  const [username, setUsername] = useState(AUTH_USERNAME)
   const [password, setPassword] = useState('')
   const [accessLine, setAccessLine] = useState('')
   const [dnaFrame, setDnaFrame] = useState(0)
@@ -188,8 +225,9 @@ export default function App() {
   const [triesLeft, setTriesLeft] = useState(3)
   const [lockoutSeconds, setLockoutSeconds] = useState(0)
   const [keypadMessage, setKeypadMessage] = useState('')
+  const [cluePagePhase, setCluePagePhase] = useState<CluePagePhase>('closed')
 
-  const usernameRef = useRef<HTMLInputElement>(null)
+  const passwordRef = useRef<HTMLInputElement>(null)
   const workspaceInputRef = useRef<HTMLInputElement>(null)
   const keypadInputRef = useRef<HTMLInputElement>(null)
   const terminalEntryIdRef = useRef(0)
@@ -197,7 +235,8 @@ export default function App() {
   const divider = useTypewriter(DIVIDER, 40, title.done)
   const enter = useTypewriter(ENTER_LABEL, 60, divider.done)
   const userLbl = useTypewriter(USER_LABEL, 55, stage === 'login')
-  const passLbl = useTypewriter(PASS_LABEL, 55, userLbl.done)
+  const usernameTyped = useTypewriter(AUTH_USERNAME, 55, userLbl.done)
+  const passLbl = useTypewriter(PASS_LABEL, 55, usernameTyped.done)
   const validate = useTypewriter(VALIDATE_LABEL,  60, passLbl.done)
   const dnaTimerTW = useTypewriter(
     `uptime: ${dnaMinutes.toString().padStart(2, '0')}m`,
@@ -208,8 +247,8 @@ export default function App() {
   useEffect(() => { if (title.done) setStage('splash') }, [title.done])
 
   useEffect(() => {
-    if (userLbl.done) usernameRef.current?.focus()
-  }, [userLbl.done])
+    if (passLbl.done) passwordRef.current?.focus()
+  }, [passLbl.done])
 
   useEffect(() => {
     if (stage !== 'granted') return
@@ -225,9 +264,24 @@ export default function App() {
 
   useEffect(() => {
     if (accessLine !== '> Access Granted.') return
-    const t = setTimeout(() => setStage('workspace'), 900)
+    const t = setTimeout(() => {
+      setCluePagePhase('opening')
+      setStage('workspace')
+    }, 900)
     return () => clearTimeout(t)
   }, [accessLine])
+
+  useEffect(() => {
+    if (cluePagePhase !== 'opening' && cluePagePhase !== 'closing') return
+    const timeout = window.setTimeout(() => {
+      setCluePagePhase((current) => {
+        if (current === 'opening') return 'open'
+        if (current === 'closing') return 'closed'
+        return current
+      })
+    }, CLUE_PAGE_ANIMATION_MS)
+    return () => window.clearTimeout(timeout)
+  }, [cluePagePhase])
 
   useEffect(() => {
     if (stage !== 'workspace' && stage !== 'countdown') return
@@ -242,9 +296,9 @@ export default function App() {
   }, [stage])
 
   useEffect(() => {
-    if (stage !== 'workspace') return
+    if (stage !== 'workspace' || cluePagePhase !== 'closed') return
     workspaceInputRef.current?.focus()
-  }, [stage, terminalEntries])
+  }, [cluePagePhase, stage, terminalEntries])
 
   useEffect(() => {
     if (stage !== 'countdown') return
@@ -311,6 +365,7 @@ export default function App() {
     setTriesLeft(3)
     setLockoutSeconds(0)
     setKeypadMessage('')
+    setCluePagePhase('closed')
     setStage('granted')
   }
 
@@ -326,7 +381,7 @@ export default function App() {
     setDnaFrame(0)
     setDnaMinutes(0)
     setSequencePipelineStep(0)
-    setUsername('')
+    setUsername(AUTH_USERNAME)
     setPassword('')
     setAuthError('')
     setShutdownSeconds(30)
@@ -334,7 +389,15 @@ export default function App() {
     setTriesLeft(3)
     setLockoutSeconds(0)
     setKeypadMessage('')
+    setCluePagePhase('closed')
     setStage('splash')
+  }
+
+  function toggleCluePage() {
+    setCluePagePhase((current) => {
+      if (current === 'closed' || current === 'closing') return 'opening'
+      return 'closing'
+    })
   }
 
   function startLockout() {
@@ -509,6 +572,7 @@ export default function App() {
   const dividerProgress = DIVIDER.length === 0 ? 0 : divider.typed.length / DIVIDER.length
 
   const keypadDigits = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0']
+  const cluePageVisible = cluePagePhase !== 'closed'
   const secretConfetti = Array.from({ length: 30 }, (_, idx) => ({
     id: idx,
     glyph: ['+', '*', '#', ']', '[', '0', '1'][idx % 7],
@@ -545,7 +609,14 @@ export default function App() {
       <>
         <div className="crt-vignette" />
         <div className="crt-overlay" />
-        <TerminalFrame headerText={`${username}-seq_files %`}>
+        <TerminalFrame
+          headerText={`${username}-seq_files %`}
+          action={
+            <button type="button" className="terminal-back-btn" onClick={toggleCluePage}>
+              Back to Clues
+            </button>
+          }
+        >
           <div className="workspace-screen">
             <section className="workspace-pane workspace-prompt-pane">
               <div className="workspace-pane-title">Command Prompt</div>
@@ -724,6 +795,54 @@ export default function App() {
               </section>
             </div>
           </div>
+          {cluePageVisible && (
+            <section
+              className={`clue-page-overlay clue-page-overlay--${cluePagePhase}`}
+              role="button"
+              tabIndex={0}
+              aria-label="Close lab notes"
+              onClick={toggleCluePage}
+              onKeyDown={(event) => {
+                if (event.key !== 'Enter' && event.key !== ' ') return
+                event.preventDefault()
+                toggleCluePage()
+              }}
+            >
+              <div className="clue-page-shell">
+                <section className="workspace-pane clue-page-pane">
+                  <div className="workspace-pane-title">Lab Notes</div>
+                  <div className="clue-page-copy">
+                    <div className="clue-page-stamp">03/27/2089</div>
+                    <div className="clue-page-heading">Laboratory Notes</div>
+                    <div className="clue-page-time">3:04 AM</div>
+                    {PRIMARY_CLUE_LINES.map((line) => (
+                      <div key={line} className="clue-page-line">
+                        {line}
+                      </div>
+                    ))}
+                    <div className="clue-page-signoff">Sincerely, Dr. Friedman</div>
+
+                    <div className="clue-page-section-divider" />
+
+                    <div className="clue-page-stamp">03/27/2089</div>
+                    <div className="clue-page-time">6:00 AM</div>
+                    {SECONDARY_CLUE_LINES.map((line) => (
+                      <div key={line} className="clue-page-line clue-page-line-accented">
+                        {renderClueText(line)}
+                      </div>
+                    ))}
+                    <div className="clue-page-signoff clue-page-signoff-accented">
+                      {SECONDARY_CLUE_SIGNOFF.map((line) => (
+                        <div key={line}>{renderClueText(line)}</div>
+                      ))}
+                    </div>
+
+                    <div className="clue-page-hint">click anywhere to reopen the workspace</div>
+                  </div>
+                </section>
+              </div>
+            </section>
+          )}
         </TerminalFrame>
       </>
     )
@@ -859,7 +978,14 @@ export default function App() {
       <div className="crt-overlay" />
       <TerminalFrame headerText={stage === 'login' ? 'auth://credential-gate' : 'boot://seqfind'}>
         <div className="auth-stage">
-          <div style={{ maxWidth: '800px', width: '100%', fontSize: '1.8rem', textAlign: 'center' }}>
+          <div
+            style={{
+              maxWidth: stage === 'background' ? '1020px' : '800px',
+              width: '100%',
+              fontSize: '1.8rem',
+              textAlign: 'center',
+            }}
+          >
             <h1 className="crt-glow" style={{
               color: termGreen, fontSize: 'clamp(2.8rem, 7vw, 5rem)',
               fontWeight: 700, letterSpacing: '0.04em', margin: 0, lineHeight: 1.1,
@@ -879,11 +1005,42 @@ export default function App() {
 
             {stage === 'splash' && divider.done && (
               <div>
-                <TermBtn disabled={!enter.done} onClick={enter.done ? () => setStage('login') : undefined}>
+                <TermBtn disabled={!enter.done} onClick={enter.done ? () => setStage('background') : undefined}>
                   {enter.typed}
                   {!enter.done && <span className="cursor-blink" style={{ marginLeft: '2px' }}>█</span>}
                 </TermBtn>
               </div>
+            )}
+
+            {stage === 'background' && (
+              <section
+                className="background-briefing"
+                role="button"
+                tabIndex={0}
+                aria-label="Continue to login"
+                onClick={() => setStage('login')}
+                onKeyDown={(event) => {
+                  if (event.key !== 'Enter' && event.key !== ' ') return
+                  event.preventDefault()
+                  setStage('login')
+                }}
+              >
+                <section className="workspace-pane clue-page-pane background-briefing-pane">
+                  <div className="workspace-pane-title">Background</div>
+                  <div className="clue-page-copy background-briefing-copy">
+                    {BACKGROUND_BRIEFING.map((line) => (
+                      <div key={line} className="clue-page-line background-briefing-line">
+                        {line}
+                      </div>
+                    ))}
+                    <div className="clue-page-signoff background-briefing-signoff">
+                      <div>Best of Luck,</div>
+                      <div>Rithik Sogal</div>
+                    </div>
+                    <div className="clue-page-hint">click anywhere to continue to login</div>
+                  </div>
+                </section>
+              </section>
             )}
 
             {stage === 'login' && (
@@ -894,22 +1051,28 @@ export default function App() {
                   </span>
                   {!userLbl.done
                     ? <span className="cursor-blink">█</span>
-                    : <input
-                        ref={usernameRef}
+                    : !usernameTyped.done
+                      ? (
+                        <span
+                          style={{ ...inputStyle, display: 'inline-block', width: 'auto', minWidth: `${AUTH_USERNAME.length}ch` }}
+                        >
+                          {usernameTyped.typed}
+                          <span className="cursor-blink">█</span>
+                        </span>
+                      )
+                      : <input
                         type="text"
                         value={username}
-                        onChange={e => {
-                          setUsername(e.target.value)
-                          if (authError) setAuthError('')
-                        }}
                         style={inputStyle}
+                        readOnly
+                        aria-readonly="true"
                         autoComplete="off"
                         spellCheck={false}
                       />
                   }
                 </div>
 
-                {userLbl.done && (
+                {usernameTyped.done && (
                   <div style={{ display: 'flex', alignItems: 'center', marginBottom: '2rem' }}>
                     <span style={{ color: termGreen, marginRight: '0.75rem', letterSpacing: '0.1em' }}>
                       {passLbl.typed}
@@ -917,6 +1080,7 @@ export default function App() {
                     {!passLbl.done
                       ? <span className="cursor-blink">█</span>
                       : <input
+                          ref={passwordRef}
                           type="password"
                           value={password}
                           onChange={e => {
