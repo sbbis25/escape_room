@@ -476,7 +476,6 @@ export default function App() {
           commandEntry,
           { id: nextTerminalEntryId(), kind: 'output', text: 'MODULE ERROR MODULE ERROR MODULE NOT FOUND' },
         ])
-        window.setTimeout(() => returnToHome(), 1300)
         return
       }
 
@@ -540,7 +539,6 @@ export default function App() {
         commandEntry,
         { id: nextTerminalEntryId(), kind: 'output', text: 'MODULE ERROR MODULE ERROR MODULE NOT FOUND' },
       ])
-      window.setTimeout(() => returnToHome(), 1300)
       return
     }
 
